@@ -1,0 +1,295 @@
+from itertools import product
+
+def evaluate_expression(expression, input_values):
+    # Evaluation of Boolean Equation
+    for var, value in input_values.items():
+        expression = expression.replace(var, str(value))
+
+    return eval(expression)
+
+def boolean_to_minterms(boolean_equation):
+    # Generate and print all minterms where the Boolean expression is true
+
+    # Extract variable names from the equation
+    variables = set(char for char in boolean_equation if char.isalpha())
+
+    # Generate truth table
+    truth_table = list(product([0, 1], repeat=len(variables)))
+
+    print("**Sum of Product:")
+
+    for i, row in enumerate(truth_table):
+        input_values = dict(zip(variables, row))
+
+        # Evaluate the expression for the current input values
+        result = evaluate_expression(boolean_equation, input_values)
+
+        # If the result is true, print the minterm
+        if result:
+            product_terms = []
+
+            for var, value in input_values.items():
+                if value == 1:
+                    product_terms.append(var)
+                else:
+                    product_terms.append(f"~{var}")
+
+            print("(", " & ".join(product_terms), ")", end=" | ")
+
+    print("\b\b\b\b   ")  # Remove the last " | "
+
+if __name__ == "__main__":
+    boolean_equation = input("Enter a Boolean equation: ")
+    boolean_to_minterms(boolean_equation)
+
+
+def boolean_to_maxterms(boolean_equation):
+    # Generate and print all maxterms where the Boolean expression is false
+
+    # Extract variable names from the equation
+    variables = set(char for char in boolean_equation if char.isalpha())
+
+    # Generate truth table
+    truth_table = list(product([0, 1], repeat=len(variables)))
+
+    print("** Product of Sum:")
+
+    for i, row in enumerate(truth_table):
+        input_values = dict(zip(variables, row))
+
+        # Evaluate the expression for the current input values
+        result = evaluate_expression(boolean_equation, input_values)
+
+        # If the result is false, print the maxterm
+        if not result:
+            sum_terms = []
+
+            for var, value in input_values.items():
+                if value == 1:
+                    sum_terms.append(f"~{var}")
+                else:
+                    sum_terms.append(var)
+
+            print("(", " | ".join(sum_terms), ")", end=" & ")
+
+    print("\b\b\b\b   ")  # Remove the last " & "
+
+if __name__ == "__main__":
+    boolean_to_maxterms(boolean_equation)
+    
+
+
+
+def invert_boolean_expression(boolean_equation):
+    # Invert the Boolean expression by swapping ANDs with ORs, ORs with ANDs, and inverting literals
+    inverted_expression = ""
+
+    for char in boolean_equation:
+        if char.isalpha():
+            inverted_expression += f"~{char}"
+        elif char == '~':
+            inverted_expression += char
+        elif char == '&':
+            inverted_expression += '|'
+        elif char == '|':
+            inverted_expression += '&'
+
+    return inverted_expression
+
+
+
+def count_ones(binary):
+    return sum(1 for bit in binary if bit == '1')
+
+def combine_terms(term1, term2):
+    combined_term = ""
+    for i in range(len(term1)):
+        if term1[i] == term2[i]:
+            combined_term += term1[i]
+        else:
+            combined_term += '-'
+    return combined_term
+
+def get_truth_values(expression, variables):
+    truth_values = []
+
+    for assignment in product([0, 1], repeat=len(variables)):
+        input_values = dict(zip(variables, assignment))
+        result = eval(expression, input_values)
+        if result:
+            truth_values.append(assignment)
+
+    return truth_values
+
+def get_prime_implicants(minterms, num_variables):
+    prime_implicants = []
+
+    implicant_chart = {}
+    for minterm in minterms:
+        binary = format(minterm, '0' + str(num_variables) + 'b')
+        implicant_chart[binary] = [minterm]
+
+    while True:
+        new_chart = {}
+        combined = set()
+
+        for term1, term2 in product(implicant_chart, implicant_chart):
+            if term1 != term2 and count_ones(combine_terms(term1, term2)) == 1:
+                combined.add(term1)
+                combined.add(term2)
+                combined_term = combine_terms(term1, term2)
+                if combined_term not in new_chart:
+                    new_chart[combined_term] = []
+
+                new_chart[combined_term].extend(implicant_chart[term1] + implicant_chart[term2])
+
+        prime_implicants.extend(set(implicant_chart.keys()) - combined)
+
+        if not new_chart:
+            break
+
+        implicant_chart = new_chart
+
+    return prime_implicants
+
+def get_minimized_expression(prime_implicants, variables):
+    terms = []
+
+    for implicant in prime_implicants:
+        term = ""
+        for i, bit in enumerate(implicant):
+            if bit == '0':
+                term += f"~{variables[i]}"
+            elif bit == '1':
+                term += variables[i]
+
+        terms.append(term)
+
+    return " + ".join(terms)
+
+if __name__ == "__main__":
+    boolean_expression = boolean_equation
+    # Extract variables from the boolean expression
+    variables = set(char for char in boolean_expression if char.isalpha())
+
+    # Get truth values based on the boolean expression
+    truth_values = get_truth_values(boolean_expression, variables)
+
+    # Extract minterms from truth values
+    minterms = [sum(value * (2 ** index) for index, value in enumerate(reversed(truth_value))) for truth_value in truth_values]
+
+    # Find prime implicants using the Quine-McCluskey algorithm
+    prime_implicants = get_prime_implicants(minterms, len(variables))
+
+    # Get the minimized boolean expression
+    minimized_expression = get_minimized_expression(prime_implicants, list(variables))
+
+
+
+
+
+def get_variables(expression):
+    return set([var for var in expression if var.isalpha()])
+
+def get_minterms(expression, variables):
+    minterms = set()
+    terms = expression.split('|')
+
+    for term in terms:
+        term = term.strip()
+        minterm = ''
+
+        for var in variables:
+            if var in term:
+                minterm += '1' if var in term else '0'
+            else:
+                minterm += '-'
+
+        minterms.add(minterm)
+
+    return minterms
+
+def combine_terms(terms):
+    combined_terms = set()
+
+    for i, j in product(range(len(terms)), repeat=2):
+        if i < j:
+            diff = [x for x in range(len(terms[i])) if terms[i][x] != terms[j][x]]
+
+            if len(diff) == 1:
+                combined = list(terms[i])
+                combined[diff[0]] = '-'
+                combined_terms.add("".join(combined))
+
+    return combined_terms
+
+def count_ones(term):
+    return term.count('1')
+
+def minimize_expression(expression):
+    variables = get_variables(expression)
+    minterms = get_minterms(expression, variables)
+    num_vars = len(variables)
+    terms = list(minterms)
+
+    while True:
+        combined_terms = combine_terms(terms)
+
+        if not combined_terms:
+            break
+
+        terms += combined_terms
+
+    prime_implicants = set(terms)
+    essential_prime_implicants = set()
+
+    on_set_minterms = set()
+    on_set_maxterms = set(product('01', repeat=num_vars))
+
+    for minterm in minterms:
+        on_set_minterms.add(minterm)
+
+        possible_implicants = set()
+
+        for implicant in prime_implicants:
+            if implicant.count('1') + implicant.count('-') == num_vars:
+                essential_prime_implicants.add(implicant)
+
+            if implicant.count('1') + implicant.count('-') >= num_vars - 1 and implicant[minterm.find('1')] == '1':
+                possible_implicants.add(implicant)
+
+        if len(possible_implicants) > 1:
+            prime_implicants -= possible_implicants
+
+    num_prime_implicants = len(prime_implicants)
+    num_essential_prime_implicants = len(essential_prime_implicants)
+    num_on_set_minterms = len(on_set_minterms)
+    num_on_set_maxterms = len(on_set_maxterms) - num_on_set_minterms
+
+    return num_prime_implicants, num_essential_prime_implicants, num_on_set_minterms, num_on_set_maxterms
+
+
+
+
+if __name__ == "__main__":
+    inverted_expression = invert_boolean_expression(boolean_equation)
+    print("**Inverted ")
+    boolean_to_minterms(inverted_expression)
+
+    print("**Inverted ")
+    boolean_to_maxterms(inverted_expression)
+    print("**Inverse Boolean Expression")
+    print(inverted_expression)
+
+    print("**Minimized Boolean Expression:")
+
+    print(minimized_expression)
+    
+    equation = boolean_equation
+    num_prime_implicants, num_essential_prime_implicants, num_on_set_minterms, num_on_set_maxterms = minimize_expression(equation)
+
+    print("**Number of Prime Implicants:", num_prime_implicants)
+    print("**Number of Essential Prime Implicants:", num_essential_prime_implicants)
+    print("**Number of ON-Set Minterms:", num_on_set_minterms)
+    print("**Number of ON-Set Maxterms:", num_on_set_maxterms)
+
